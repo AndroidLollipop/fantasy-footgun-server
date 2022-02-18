@@ -158,7 +158,7 @@ const init = Promise.all([
       }
       const [authenticated, exists] = authenticate(submission, authToken)
       if (!authenticated) {
-        socket.emit("fail", "Somebody has already chosen this name. Please choose a different name.", writeToken)
+        socket.emit("fail", "This name has already been chosen. Please choose a different name.", writeToken)
         return
       }
       const commitAuthToken = !authToken ? freshToken() : authToken
@@ -173,6 +173,9 @@ const init = Promise.all([
       rerenderData(() => {
         notifyI()
       })
+    })
+    socket.on("requestEraseEpoch", () => {
+      socket.emit("sendEraseEpoch", state.eraseEpoch)
     })
   });
 
