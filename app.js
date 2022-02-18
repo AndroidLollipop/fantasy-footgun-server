@@ -1,6 +1,7 @@
 // const { Client } = require("pg");
 const express = require("express");
 const http = require("http");
+const crypto = require("crypto")
 
 const postgresSafe = x => {
   var ret = ""
@@ -51,6 +52,20 @@ var notificationsStore = JSON.parse(notificationsString)
 var submissionsStore = JSON.parse(submissionsStrings)
 var dataStore
 rerenderData()
+
+const sha256hash = content => crypto.createHash('sha256').update(content).digest('base64')
+const AUTH_SECRET = process.env.AUTH_SECRET ? process.env.AUTH_SECRET : "testing"
+const readCurToken = () => {
+  return sha256hash(`${AUTH_SECRET}::${state.tokenNum}`)
+}
+const incrementToken = () => {
+  state.tokenNum++
+  fs.writeFile("./defaultData/state.json", JSON.stringify(state), ()=>{})
+}
+const freshToken = () => {
+  incrementToken()
+  return readCurToken()
+}
 
 /*client.query("SELECT my_data FROM mydata WHERE my_key='uid';", (err, res) => {
   if (err) throw err;
@@ -113,13 +128,34 @@ io.on("connection", (socket) => {
   socket.on("requestNotifications", () => {
     socket.emit("sendNotifications", notificationsStore)
   })
-  socket.on("appendSubmission", (submission) => {
-    appendSubmission(submission)
+  socket.on("appendSubmission", (submission, writeToken, authToken) => {
+    const [authenticated, exists] = authenticate(submission, authToken)
+    if (!authenticated) {
+      socket.emit("prompt", "Somebody has already chosen this name. Please choose a different name.", writeToken)
+      return
+    }
+    const commitAuthToken = !exists ? freshToken() : authToken
+    const newSub = {...submission, authToken: commitAuthToken, dateSubmitted: JSON.stringify(new Date())}
+    if (exists) {
+      writeSubmission(newSub)
+    }
+    else {
+      appendSubmission(newSub)
+    }
+    socket.emit("commit", writeToken, commitAuthToken)
     rerenderData(() => {
       notifyI()
     })
   })
 });
+
+const authenticate = (submission, authToken) => {
+  const match = submissionsStore.find(x => x.nickname === submission.nickname)
+  if (!match) {
+    return [true, false]
+  }
+  return [authToken === match.authToken, true]
+}
 
 const notifyI = (except) => {
   for (socket of sockets) {
@@ -132,6 +168,11 @@ const notifyI = (except) => {
 const appendSubmission = (submission) => {
   submissionsStore = [...submissionsStore, submission]
   fs.writeFile("./defaultData/submissions.json", JSON.stringify(submissionsStore), ()=>{})
+}
+
+const writeSubmission = (submission) => {
+  submissionsStore = submissionsStore.filter(x => x.nickname !== submission.nickname)
+  appendSubmission(submission)
 }
 
 const getApiAndEmit = socket => {
