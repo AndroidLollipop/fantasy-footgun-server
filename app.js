@@ -42,7 +42,6 @@ const readDBKey = (key) => {
       reject(`Error: ${res.rows.length} rows found`)
       return
     }
-    console.log(key, res.rows[0])
     resolve(res.rows[0]["my_data"])
   })
   return myPromise
