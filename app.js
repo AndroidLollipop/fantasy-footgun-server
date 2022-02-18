@@ -54,7 +54,7 @@ var dataStore
 rerenderData()
 
 const sha256hash = content => crypto.createHash('sha256').update(content).digest('base64')
-const AUTH_SECRET = process.env.AUTH_SECRET ? process.env.AUTH_SECRET : "testing"
+const AUTH_SECRET = process.env.AUTH_SECRET
 const readCurToken = () => {
   return sha256hash(`${AUTH_SECRET}::${state.tokenNum}`)
 }
@@ -129,12 +129,16 @@ io.on("connection", (socket) => {
     socket.emit("sendNotifications", notificationsStore)
   })
   socket.on("appendSubmission", (submission, writeToken, authToken) => {
-    const [authenticated, exists] = authenticate(submission, authToken)
-    if (!authenticated) {
-      socket.emit("prompt", "Somebody has already chosen this name. Please choose a different name.", writeToken)
+    if (!state.allowSubmissions) {
+      socket.emit("fail", "Submissions are closed.", writeToken)
       return
     }
-    const commitAuthToken = !exists ? freshToken() : authToken
+    const [authenticated, exists] = authenticate(submission, authToken)
+    if (!authenticated) {
+      socket.emit("fail", "Somebody has already chosen this name. Please choose a different name.", writeToken)
+      return
+    }
+    const commitAuthToken = !authToken ? freshToken() : authToken
     const newSub = {...submission, authToken: commitAuthToken, dateSubmitted: JSON.stringify(new Date())}
     if (exists) {
       writeSubmission(newSub)

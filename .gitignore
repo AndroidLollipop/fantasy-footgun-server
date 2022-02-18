@@ -27,3 +27,6 @@ credentials.json
 
 # token
 token.json
+
+#secret
+/secret
