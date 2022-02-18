@@ -43,7 +43,7 @@ const readDBKey = (key) => {
       return
     }
     console.log(key, res.rows[0])
-    resolve(res.rows[0])
+    resolve(res.rows[0]["my_data"])
   })
   return myPromise
 }
