@@ -24,12 +24,33 @@ const postgresSafe = x => {
 
 client.connect()*/
 
+const columns = ["Name","Total Score","SAR21","SAW","GPMG"]
+const renderSubmissions = (submissionsStore, rowTransform, scoringMetric) => {
+  const mySubmissions = [...submissionsStore]
+  if (typeof scoringMetric === "function") {
+    mySubmissions.sort(scoringMetric)
+  }
+  return {columns, rows: mySubmissions.map(rowTransform)}
+}
+
+const rerenderData = cb => {
+  dataStore = renderSubmissions(submissionsStore, state.scoreRows === true ? row => {
+    scores = notificationsStore.map(category => category.winner === row[category.name] ? 1 : 0)
+    return [row.nickname, scores.reduce((a, b) => a+b), ...scores]
+  } : row => [row.nickname, "", "", "", ""])
+  if (typeof cb === "function") {
+    cb(dataStore)
+  }
+}
+
 const fs = require('fs')
-var internalUID = JSON.parse(fs.readFileSync("./defaultData/uid.json"))
-const dataString = fs.readFileSync("./defaultData/dataStore.json")
+var state = JSON.parse(fs.readFileSync("./defaultData/state.json"))
 const notificationsString = fs.readFileSync("./defaultData/notificationsStore.json")
-var dataStore = JSON.parse(dataString)
+const submissionsStrings = fs.readFileSync("./defaultData/submissions.json")
 var notificationsStore = JSON.parse(notificationsString)
+var submissionsStore = JSON.parse(submissionsStrings)
+var dataStore
+rerenderData()
 
 /*client.query("SELECT my_data FROM mydata WHERE my_key='uid';", (err, res) => {
   if (err) throw err;
@@ -59,76 +80,6 @@ var notificationsStore = JSON.parse(notificationsString)
     notifyN()
   }
 });*/
-
-const readDataStore = (internalUID) => {
-  const result = dataStore.filter(x => x.internalUID === internalUID)
-  if (result.length === 0) {
-    return undefined
-  }
-  else {
-    return result[0]
-  }
-}
-
-const overwriteDS = () => {
-  const dataJSON = JSON.stringify(dataStore)
-  /*client.query("UPDATE mydata SET my_data = '"+postgresSafe(dataJSON)+"' WHERE my_key='indents'", (err, res) => {
-    if (err) throw err;
-  })*/
-  fs.writeFile('./defaultData/dataStore.json', dataJSON, ()=>{})
-}
-
-const overwriteNS = () => {
-  const notificationsJSON = JSON.stringify(notificationsStore)
-  /*client.query("UPDATE mydata SET my_data = '"+postgresSafe(notificationsJSON)+"' WHERE my_key='notifications'", (err, res) => {
-    if (err) throw err;
-  })*/
-  fs.writeFile('./defaultData/notificationsStore.json', notificationsJSON, ()=>{})
-}
-
-const overwriteUID = () => {
-  /*client.query("UPDATE mydata SET my_data = '"+postgresSafe(JSON.stringify(internalUID))+"' WHERE my_key='uid'", (err, res) => {
-    if (err) throw err;
-  })*/
-  fs.writeFile('./defaultData/uid.json', JSON.stringify(internalUID), ()=>{})
-}
-
-const writeDataStore = (internalUID, write) => {
-  const index = dataStore.findIndex(x => x.internalUID === internalUID)
-  var result = false
-  if (index > -1 && index < dataStore.length) {
-    dataStore = [...dataStore]
-    //MOCK SERVER, REMOVE IN PRODUCTION
-    result = acknowledgeEdit(write, dataStore[index])
-    dataStore[index] = write
-    overwriteDS()
-  }
-  return result
-}
-
-const appendDataStore = (write) => {
-  const insert = {...write, status: "Pending", internalUID: internalUID}
-  appendJSON(insert)
-  dataStore = [...dataStore, insert]
-  internalUID++
-  overwriteUID()
-  overwriteDS()
-}
-
-const appendNotifications = (write, title) => {
-  appendNSON([write, title])
-  notificationsStore = [...notificationsStore, write]
-  overwriteNS()
-}
-
-const acknowledgeEdit = ({internalUID, status}, {internalUID: oldUID, status: oldStatus, name: title}) => {
-  if (status !== oldStatus && internalUID === oldUID) {
-    appendNotifications({title: "Indent \""+readDataStore(internalUID).name+"\" is now "+status, internalUID: internalUID}, title)
-    notifyN()
-    return true
-  }
-  return false
-}
 
 const port = process.env.PORT || 4001;
 const index = require("./routes/index");
@@ -162,36 +113,11 @@ io.on("connection", (socket) => {
   socket.on("requestNotifications", () => {
     socket.emit("sendNotifications", notificationsStore)
   })
-  socket.on("writeDataStore", ([internalUID, write, token]) => {
-    try {
-      const edited = writeDataStore(internalUID, write)
-      socket.emit("sendIndents", dataStore, token)
-      notifyI(socket)
-    }
-    catch (e) {
-      console.log(e)
-    }
-  })
-  socket.on("appendDataStore", ([write, token]) => {
-    try {
-      if (typeof write !== "object") {
-        return
-      }
-      if (Array.isArray(write.emailsNotify)) {
-        write.emailsNotify = write.emailsNotify.filter(x => {
-          if (typeof x !== "string") {
-            return false
-          }
-          return validateEmail(x)
-        })
-      }
-      appendDataStore(write)
-      socket.emit("sendIndents", dataStore, token)
-      notifyI(socket)
-    }
-    catch (e) {
-      console.log(e)
-    }
+  socket.on("appendSubmission", (submission) => {
+    appendSubmission(submission)
+    rerenderData(() => {
+      notifyI()
+    })
   })
 });
 
@@ -201,6 +127,11 @@ const notifyI = (except) => {
       socket.emit("sendIndents", dataStore)
     }
   }
+}
+
+const appendSubmission = (submission) => {
+  submissionsStore = [...submissionsStore, submission]
+  fs.writeFile("./defaultData/submissions.json", JSON.stringify(submissionsStore), ()=>{})
 }
 
 const getApiAndEmit = socket => {
