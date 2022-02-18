@@ -2,7 +2,7 @@
   "engines": {
     "node": "12.17.x"
   },
-  "name": "indent-system-server",
+  "name": "fantasy-footgun-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
