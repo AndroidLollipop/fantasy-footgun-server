@@ -53,9 +53,9 @@ var notificationsStore
 var submissionsStore
 
 const init = Promise.all([
-  (async () => state=JSON.parse(await readDBKey("state")))(),
-  (async () => notificationsStore=JSON.parse(await readDBKey("notifications")))(),
-  (async () => submissionsStore=JSON.parse(await readDBKey("submissions")))()
+  (async () => state=await readDBKey("state"))(),
+  (async () => notificationsStore=await readDBKey("notifications"))(),
+  (async () => submissionsStore=await readDBKey("submissions"))()
 ]);
 
 (async () => {
