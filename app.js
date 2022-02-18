@@ -114,7 +114,7 @@ const init = Promise.all([
 
   const io = require("socket.io")(server, {
     cors: {
-      origin: "http://localho.st:3000",
+      origin: "https://androidlollipop.github.io",
       methods: ["GET", "POST"]
     }
   });
