@@ -77,11 +77,26 @@ const init = Promise.all([
     return {columns, rows: mySubmissions.map(rowTransform)}
   }
 
+  const scores = row => {
+    const scores = notificationsStore.map(category => category.winner === row[category.name] ? 1 : 0)
+    return [scores.reduce((a, b) => a+b), ...scores]
+  }
+
   const rerenderData = cb => {
-    dataStore = renderSubmissions(submissionsStore, state.scoreRows === true ? row => {
-      scores = notificationsStore.map(category => category.winner === row[category.name] ? 1 : 0)
-      return [row.nickname, scores.reduce((a, b) => a+b), ...scores]
-    } : row => [row.nickname, "", "", "", ""])
+    dataStore = renderSubmissions(
+      submissionsStore,
+      state.scoreRows === true ? row => [row.nickname, ...scores(row)] : row => [row.nickname, "", "", "", ""],
+      state.scoreRows === true ? (row1, row2) => {
+        const r1s = scores(row1)[0]
+        const r2s = scores(row2)[0]
+        if (r1s !== r2s) {
+          return r2s-r1s
+        }
+        return (new Date(row1.dateSubmitted)).getTime()-(new Date(row2.dateSubmitted)).getTime()
+      }: (row1, row2) => {
+        return (new Date(row2.dateSubmitted)).getTime()-(new Date(row1.dateSubmitted)).getTime()
+      }
+    )
     if (typeof cb === "function") {
       cb(dataStore)
     }
