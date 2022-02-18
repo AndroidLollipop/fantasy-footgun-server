@@ -1,0 +1,23 @@
+{
+  "engines": {
+    "node": "12.17.x"
+  },
+  "name": "indent-system-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "googleapis": "^39.2.0",
+    "mysql": "^2.18.1",
+    "pg": "^8.5.1",
+    "socket.io": "^3.0.4"
+  }
+}
