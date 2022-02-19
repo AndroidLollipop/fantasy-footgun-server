@@ -3,7 +3,8 @@ const express = require("express");
 const http = require("http");
 const crypto = require("crypto")
 const shapeValidator = require("./validation/shapeValidator")
-const shapes = require("./validation/shapes")
+const shapes = require("./validation/shapes");
+const validateType = require("./validation/shapeValidator");
 
 const postgresSafe = x => {
   var ret = ""
@@ -54,9 +55,9 @@ var notificationsStore
 var submissionsStore
 
 const init = Promise.all([
-  (async () => state=await readDBKey("state"))(),
+  (async () => submissionsStore=await readDBKey("submissions"))(),
   (async () => notificationsStore=await readDBKey("notifications"))(),
-  (async () => submissionsStore=await readDBKey("submissions"))()
+  (async () => state=await readDBKey("state"))()
 ]);
 
 (async () => {
@@ -108,6 +109,7 @@ const init = Promise.all([
 
   const sha256hash = content => crypto.createHash('sha256').update(content).digest('base64')
   const AUTH_SECRET = process.env.AUTH_SECRET
+  const ADMIN_AUTH_SECRET = process.env.ADMIN_AUTH_SECRET
   const readCurToken = () => {
     return sha256hash(`${AUTH_SECRET}::${state.tokenNum}`)
   }
@@ -166,6 +168,7 @@ const init = Promise.all([
   }
 
   io.on("connection", (socket) => {
+    var SESSION_ADMIN_TOKEN
     sockets.push(socket)
     console.log("New client connected");
     socket.on("disconnect", () => {
@@ -208,6 +211,39 @@ const init = Promise.all([
     socket.on("requestEraseEpoch", () => {
       socket.emit("sendEraseEpoch", state.eraseEpoch)
     })
+    socket.on("requestAdminSalt", () => {
+      if (typeof SESSION_ADMIN_TOKEN === "string") {
+        return
+      }
+      const array = new Uint32Array(16)
+      crypto.webcrypto.getRandomValues(array)
+      const session_admin_salt = sha256hash(`${array}`)
+      SESSION_ADMIN_TOKEN = sha256hash(`${session_admin_salt}::${ADMIN_AUTH_SECRET}`)
+      socket.emit("sendAdminSalt", session_admin_salt)
+    })
+    socket.on("requestAdminAuth", (adminAuthToken) => {
+      if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
+        socket.emit("sendAuthFailed", "")
+      }
+    })
+    socket.on("writeState", (adminAuthToken, newState) => {
+      if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
+        return
+      }
+      if (!validateType(shapes.stateSubmission)(newState)) {
+        return
+      }
+      writeState(newState)
+    })
+    socket.on("writeNotifications", (adminAuthToken, newNotifications) => {
+      if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
+        return
+      }
+      if (!validateType(shapes.notificationsSubmission)(newNotifications)) {
+        return
+      }
+      writeNotifications(newNotifications)
+    })
   });
 
   const authenticate = (submission, authToken) => {
@@ -233,6 +269,13 @@ const init = Promise.all([
     })
   }
 
+  const overwriteNS = () => {
+    const notificationsJSON = JSON.stringify(notificationsStore)
+    client.query("UPDATE mydata SET my_data = '"+postgresSafe(notificationsJSON)+"' WHERE my_key='notifications'", (err, res) => {
+      if (err) throw err;
+    })
+  }
+
   const overwriteST = () => {
     const stateJSON = JSON.stringify(state)
     client.query("UPDATE mydata SET my_data = '"+postgresSafe(stateJSON)+"' WHERE my_key='state'", (err, res) => {
@@ -248,6 +291,19 @@ const init = Promise.all([
   const writeSubmission = (submission) => {
     submissionsStore = submissionsStore.filter(x => x.nickname !== submission.nickname)
     appendSubmission(submission)
+  }
+
+  const writeState = (newState) => {
+    state = {...state}
+    for (const key in newState) {
+      state[key] = newState[key]
+    }
+    overwriteST()
+  }
+
+  const writeNotifications = (newNotifications) => {
+    notificationsStore = [...notificationsStore]
+    overwriteNS()
   }
 
   server.listen(port, () => console.log(`Listening on port ${port}`));
