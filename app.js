@@ -267,6 +267,7 @@ const init = Promise.all([
       rerenderData(() => {
         notifyI()
       })
+      notifyE()
     })
   });
 
@@ -290,6 +291,14 @@ const init = Promise.all([
     for (const socket of sockets) {
       if (socket !== except) {
         socket.emit("sendNotifications", notificationsStore)
+      }
+    }
+  }
+
+  const notifyE = (except) => {
+    for (const socket of sockets) {
+      if (socket !== except) {
+        socket.emit("sendEraseEpoch", state.eraseEpoch)
       }
     }
   }
