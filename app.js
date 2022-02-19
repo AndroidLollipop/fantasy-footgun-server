@@ -2,6 +2,8 @@ const { Client } = require("pg");
 const express = require("express");
 const http = require("http");
 const crypto = require("crypto")
+const shapeValidator = require("./validation/shapeValidator")
+const shapes = require("./validation/shapes")
 
 const postgresSafe = x => {
   var ret = ""
