@@ -233,7 +233,13 @@ const init = Promise.all([
       if (!validateType(shapes.stateSubmission)(newState)) {
         return
       }
+      const rerender = newState.scoreRows !== undefined && newState.scoreRows !== state.scoreRows
       writeState(newState)
+      if (rerender) {
+        rerenderData(() => {
+          notifyI()
+        })
+      }
     })
     socket.on("writeNotifications", (adminAuthToken, newNotifications) => {
       if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
@@ -243,6 +249,12 @@ const init = Promise.all([
         return
       }
       writeNotifications(newNotifications)
+      notifyN()
+      if (state.scoreRows) {
+        rerenderData(() => {
+          notifyI()
+        })
+      }
     })
   });
 
@@ -255,9 +267,17 @@ const init = Promise.all([
   }
 
   const notifyI = (except) => {
-    for (socket of sockets) {
+    for (const socket of sockets) {
       if (socket !== except) {
         socket.emit("sendIndents", dataStore)
+      }
+    }
+  }
+
+  const notifyN = (except) => {
+    for (const socket of sockets) {
+      if (socket !== except) {
+        socket.emit("sendNotifications", notificationsStore)
       }
     }
   }
@@ -303,6 +323,16 @@ const init = Promise.all([
 
   const writeNotifications = (newNotifications) => {
     notificationsStore = [...notificationsStore]
+    var kv = {}
+    for (const newNotification of newNotifications) {
+      kv[newNotification.name] = newNotification
+    }
+    for (var i = 0; i < notificationsStore.length; i++) {
+      const name = notificationsStore[i].name
+      if (kv[name] !== undefined) {
+        notificationsStore[i] = kv[name]
+      }
+    }
     overwriteNS()
   }
 
