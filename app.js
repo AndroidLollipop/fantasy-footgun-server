@@ -168,6 +168,7 @@ const init = Promise.all([
   }
 
   io.on("connection", (socket) => {
+    var SESSION_GENERATING_TOKEN
     var SESSION_ADMIN_TOKEN
     sockets.push(socket)
     console.log("New client connected");
@@ -215,16 +216,27 @@ const init = Promise.all([
       if (typeof SESSION_ADMIN_TOKEN === "string") {
         return
       }
+      if (SESSION_GENERATING_TOKEN === true) {
+        return
+      }
+      SESSION_GENERATING_TOKEN = true
       const array = new Uint32Array(16)
-      crypto.randomFillSync(array)
-      const session_admin_salt = sha256hash(`${array}`)
-      SESSION_ADMIN_TOKEN = sha256hash(`${session_admin_salt}::${ADMIN_AUTH_SECRET}`)
-      socket.emit("sendAdminSalt", session_admin_salt)
+      crypto.randomFill(array, (err, buf) => {
+        if (err) {
+          SESSION_GENERATING_TOKEN = false
+          throw err
+        }
+        const session_admin_salt = sha256hash(`${buf}`)
+        SESSION_ADMIN_TOKEN = sha256hash(`${session_admin_salt}::${ADMIN_AUTH_SECRET}`)
+        socket.emit("sendAdminSalt", session_admin_salt)
+      })
     })
     socket.on("requestAdminAuth", (adminAuthToken) => {
       if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
         socket.emit("sendAuthFailed", "")
+        return
       }
+      socket.emit("sendAuthSuccessful", "")
     })
     socket.on("writeState", (adminAuthToken, newState) => {
       if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
