@@ -216,7 +216,7 @@ const init = Promise.all([
         return
       }
       const array = new Uint32Array(16)
-      crypto.webcrypto.getRandomValues(array)
+      crypto.randomFillSync(array)
       const session_admin_salt = sha256hash(`${array}`)
       SESSION_ADMIN_TOKEN = sha256hash(`${session_admin_salt}::${ADMIN_AUTH_SECRET}`)
       socket.emit("sendAdminSalt", session_admin_salt)
