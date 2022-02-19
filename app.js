@@ -228,6 +228,7 @@ const init = Promise.all([
     })
     socket.on("writeState", (adminAuthToken, newState) => {
       if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
+        socket.emit("sendAuthFailed", "")
         return
       }
       if (!validateType(shapes.stateSubmission)(newState)) {
@@ -243,6 +244,7 @@ const init = Promise.all([
     })
     socket.on("writeNotifications", (adminAuthToken, newNotifications) => {
       if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
+        socket.emit("sendAuthFailed", "")
         return
       }
       if (!validateType(shapes.notificationsSubmission)(newNotifications)) {
