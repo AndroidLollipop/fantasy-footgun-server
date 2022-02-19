@@ -92,9 +92,9 @@ const init = Promise.all([
         if (r1s !== r2s) {
           return r2s-r1s
         }
-        return (new Date(row1.dateSubmitted)).getTime()-(new Date(row2.dateSubmitted)).getTime()
+        return row1.dateSubmitted-row2.dateSubmitted
       }: (row1, row2) => {
-        return (new Date(row2.dateSubmitted)).getTime()-(new Date(row1.dateSubmitted)).getTime()
+        return row2.dateSubmitted-row1.dateSubmitted
       }
     )
     if (typeof cb === "function") {
@@ -136,14 +136,40 @@ const init = Promise.all([
 
   var sockets = []
 
+  const fields = ["nickname", "sar21", "saw", "gpmg"]
+  const optionalFields = ["authToken"]
+
+  const validateSubmission = (submission) => {
+    if (typeof submission !== "object") {
+      return false
+    }
+    var matches = 0
+    for (const field of fields) {
+      if (typeof submission[field] !== "string") {
+        return false
+      }
+      matches++
+    }
+    for (const optionalField of optionalFields) {
+      if (submission[optionalField] !== undefined) {
+        if (typeof submission[optionalField] !== "string") {
+          return false
+        }
+        matches++
+      }
+    }
+    if (Object.keys(submission).length !== matches) {
+      return false
+    }
+    return true
+  }
+
   io.on("connection", (socket) => {
     sockets.push(socket)
     console.log("New client connected");
-    const interval = setInterval(() => getApiAndEmit(socket), 20000);
     socket.on("disconnect", () => {
       sockets = sockets.filter(s => s !== socket)
       console.log("Client disconnected");
-      clearInterval(interval);
     });
     socket.on("requestIndents", () => {
       socket.emit("sendIndents", dataStore)
@@ -156,13 +182,17 @@ const init = Promise.all([
         socket.emit("fail", "Submissions are closed.", writeToken)
         return
       }
+      if (!validateSubmission(submission)) {
+        socket.emit("fail", "Your client is out of date. Please refresh the page.", writeToken)
+        return
+      }
       const [authenticated, exists] = authenticate(submission, authToken)
       if (!authenticated) {
         socket.emit("fail", "This name has already been chosen. Please choose a different name.", writeToken)
         return
       }
       const commitAuthToken = !authToken ? freshToken() : authToken
-      const newSub = {...submission, authToken: commitAuthToken, dateSubmitted: JSON.stringify(new Date())}
+      const newSub = {...submission, authToken: commitAuthToken, dateSubmitted: (new Date()).getTime()}
       if (exists) {
         writeSubmission(newSub)
       }
@@ -218,12 +248,6 @@ const init = Promise.all([
     submissionsStore = submissionsStore.filter(x => x.nickname !== submission.nickname)
     appendSubmission(submission)
   }
-
-  const getApiAndEmit = socket => {
-    const response = new Date();
-    // Emitting a new message. Will be consumed by the client
-    socket.emit("FromAPI", response);
-  };
 
   server.listen(port, () => console.log(`Listening on port ${port}`));
 })()
