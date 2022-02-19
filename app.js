@@ -49,7 +49,6 @@ const readDBKey = (key) => {
   return myPromise
 }
 
-const fs = require('fs')
 var state
 var notificationsStore
 var submissionsStore
