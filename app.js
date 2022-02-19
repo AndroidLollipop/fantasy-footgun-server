@@ -258,6 +258,16 @@ const init = Promise.all([
         })
       }
     })
+    socket.on("eraseSubmissions", (adminAuthToken) => {
+      if (typeof SESSION_ADMIN_TOKEN !== "string" || SESSION_ADMIN_TOKEN !== adminAuthToken) {
+        socket.emit("sendAuthFailed", "")
+        return
+      }
+      eraseSubmissions()
+      rerenderData(() => {
+        notifyI()
+      })
+    })
   });
 
   const authenticate = (submission, authToken) => {
@@ -336,6 +346,15 @@ const init = Promise.all([
       }
     }
     overwriteNS()
+  }
+
+  const eraseSubmissions = () => {
+    if (submissionsStore.length > 0) {
+      state.eraseEpoch++
+      submissionsStore = []
+      overwriteST()
+      overwriteSS()
+    }
   }
 
   server.listen(port, () => console.log(`Listening on port ${port}`));
