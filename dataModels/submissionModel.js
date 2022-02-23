@@ -11,7 +11,7 @@ var columns = []
 var fields = []
 var optionalFields = []
 
-for (const submission of submissionModel.fields) {
+for (const submission of rawSubmissionModel.fields) {
   columns.push(submission.columnName)
   fields.push(submission.name)
 }
