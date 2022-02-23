@@ -6,7 +6,7 @@ const shapeValidator = require("./validation/shapeValidator")
 const shapes = require("./validation/shapes");
 const validateType = require("./validation/shapeValidator");
 const submissionModel = require("./dataModels/submissionModel");
-const rerenderThrottle = 10000;
+const rerenderThrottle = 500;
 
 const postgresSafe = x => {
   var ret = ""
