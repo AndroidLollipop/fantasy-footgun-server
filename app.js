@@ -5,6 +5,7 @@ const crypto = require("crypto")
 const shapeValidator = require("./validation/shapeValidator")
 const shapes = require("./validation/shapes");
 const validateType = require("./validation/shapeValidator");
+const submissionModel = require("./dataModels/submissionModel")
 
 const postgresSafe = x => {
   var ret = ""
@@ -70,7 +71,9 @@ const init = Promise.all([
     return
   }
 
-  const columns = ["Name","Total Score","SAR21","SAW","GPMG"]
+  console.log(["Name","Total Score","SAR21","SAW","GPMG"])
+  const columns = submissionModel.columns
+  console.log(columns)
   const renderSubmissions = (submissionsStore, rowTransform, scoringMetric) => {
     const mySubmissions = [...submissionsStore]
     if (typeof scoringMetric === "function") {
@@ -139,8 +142,12 @@ const init = Promise.all([
 
   var sockets = []
 
-  const fields = ["nickname", "sar21", "saw", "gpmg"]
-  const optionalFields = ["authToken"]
+  console.log(["nickname", "sar21", "saw", "gpmg"])
+  const fields = submissionModel.fields
+  console.log(fields)
+  console.log(["authToken"])
+  const optionalFields = submissionModel.optionalFields
+  console.log(optionalFields)
 
   const validateSubmission = (submission) => {
     if (typeof submission !== "object") {
