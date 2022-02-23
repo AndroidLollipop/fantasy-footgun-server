@@ -16,6 +16,8 @@ for (const submission of rawSubmissionModel.fields) {
   fields.push(submission.name)
 }
 
+columns = [...columns.slice(0, 1), "Total Score", ...columns.slice(1)]
+
 for (const optionalField of rawOptionalFields) {
   optionalFields.push(optionalField)
 }
