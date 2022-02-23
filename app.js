@@ -6,7 +6,7 @@ const shapeValidator = require("./validation/shapeValidator")
 const shapes = require("./validation/shapes");
 const validateType = require("./validation/shapeValidator");
 const submissionModel = require("./dataModels/submissionModel");
-const rerenderDebounce = 10000;
+const rerenderThrottle = 10000;
 
 const postgresSafe = x => {
   var ret = ""
@@ -87,27 +87,19 @@ const init = Promise.all([
   }
 
   var latestRenderActive = false
-  var latestRenderResolve
-  var latestRenderTimeout
   var latestRender
 
   const rerenderData = async cb => {
     if (latestRenderActive) {
-      clearTimeout(latestRenderTimeout)
-      latestRenderTimeout = setTimeout(() => {
-        latestRenderActive = false
-        latestRenderResolve()
-      }, rerenderDebounce)
       await latestRender
       return cb(dataStore)
     }
     latestRenderActive = true
     latestRender = new Promise((resolve) => {
-      latestRenderResolve = resolve
-      latestRenderTimeout = setTimeout(() => {
+      setTimeout(() => {
         latestRenderActive = false
-        latestRenderResolve()
-      }, rerenderDebounce)
+        resolve()
+      }, rerenderThrottle)
     })
     await latestRender
     return forceRerenderData(cb)
