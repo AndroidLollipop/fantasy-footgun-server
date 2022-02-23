@@ -5,7 +5,8 @@ const crypto = require("crypto")
 const shapeValidator = require("./validation/shapeValidator")
 const shapes = require("./validation/shapes");
 const validateType = require("./validation/shapeValidator");
-const submissionModel = require("./dataModels/submissionModel")
+const submissionModel = require("./dataModels/submissionModel");
+const rerenderDebounce = 500;
 
 const postgresSafe = x => {
   var ret = ""
@@ -85,7 +86,34 @@ const init = Promise.all([
     return [scores.reduce((a, b) => a+b), ...scores]
   }
 
-  const rerenderData = cb => {
+  var latestRenderActive = false
+  var latestRenderResolve
+  var latestRenderTimeout
+  var latestRender
+
+  const rerenderData = async cb => {
+    if (latestRenderActive) {
+      clearTimeout(latestRenderTimeout)
+      latestRenderTimeout = setTimeout(() => {
+        latestRenderActive = false
+        latestRenderResolve()
+      }, rerenderDebounce)
+      await latestRender
+      return cb(dataStore)
+    }
+    latestRenderActive = true
+    latestRender = new Promise((resolve) => {
+      latestRenderResolve = resolve
+      latestRenderTimeout = setTimeout(() => {
+        latestRenderActive = false
+        latestRenderResolve()
+      }, rerenderDebounce)
+    })
+    await latestRender
+    return forceRerenderData(cb)
+  }
+
+  const forceRerenderData = cb => {
     dataStore = renderSubmissions(
       submissionsStore,
       state.scoreRows === true ? row => [row.nickname, ...scores(row)] : row => [row.nickname, "", "", "", ""],
@@ -101,7 +129,7 @@ const init = Promise.all([
       }
     )
     if (typeof cb === "function") {
-      cb(dataStore)
+      return cb(dataStore)
     }
   }
 
