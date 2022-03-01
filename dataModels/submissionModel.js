@@ -5,7 +5,7 @@ const rawSubmissionModel = {fields: [{name: "nickname", initialData: "", columnN
   {name: "Support", fullName: "PTE 4", friendlyName: "Support - PTE 4", photo: "https://c8.alamy.com/comp/D198EY/a-balinese-man-in-a-singapore-army-camo-shirt-D198EY.jpg"},
   {name: "MSC", fullName: "PTE 5", friendlyName: "MSC - PTE 5", photo: "https://www.janes.com/images/default-source/news-images/fg_3808936-idr-9354.jpg?sfvrsn=b60dfede_2"}
 ]}}
-const rawOptionalFields = ["authToken"]
+const rawOptionalFields = []
 
 var columns = []
 var fields = []
