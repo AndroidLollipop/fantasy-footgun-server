@@ -1,6 +1,6 @@
 {
   "engines": {
-    "node": "12.17.x"
+    "node": "16.14.x"
   },
   "name": "fantasy-footgun-server",
   "version": "1.0.0",
