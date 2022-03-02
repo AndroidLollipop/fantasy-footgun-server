@@ -112,9 +112,13 @@ const init = Promise.all([
   }
 
   const forceRerenderData = cb => {
+    var emptyRow
+    if (state.scoreRows !== true) {
+      emptyRow = ["", ...notificationsStore.map(x => "")]
+    }
     dataStore = renderSubmissions(
       submissionsStore,
-      state.scoreRows === true ? row => [row.nickname, ...scores(row)] : row => [row.nickname, "", "", "", ""],
+      state.scoreRows === true ? row => [row.nickname, ...scores(row)] : row => [row.nickname, ...emptyRow],
       state.scoreRows === true ? (row1, row2) => {
         const r1s = scores(row1)[0]
         const r2s = scores(row2)[0]
