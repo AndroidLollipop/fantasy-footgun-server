@@ -97,18 +97,17 @@ const init = Promise.all([
     registeredCbs.add(cb)
     if (latestRenderActive) {
       await latestRender
-      registeredCbs.delete(cb)
       return typeof cb === "function" ? cb(dataStore) : undefined
     }
     latestRenderActive = true
     latestRender = new Promise((resolve) => {
       setTimeout(() => {
         latestRenderActive = false
+        registeredCbs.clear()
         resolve()
       }, rerenderThrottle)
     })
     await latestRender
-    registeredCbs.delete(cb)
     return forceRerenderData(cb)
   }
 
