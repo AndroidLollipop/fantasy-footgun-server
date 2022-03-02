@@ -88,11 +88,17 @@ const init = Promise.all([
 
   var latestRenderActive = false
   var latestRender
+  var registeredCbs = new Set()
 
   const rerenderData = async cb => {
+    if (registeredCbs.has(cb)) {
+      return
+    }
+    registeredCbs.add(cb)
     if (latestRenderActive) {
       await latestRender
-      return cb(dataStore)
+      registeredCbs.delete(cb)
+      return typeof cb === "function" ? cb(dataStore) : undefined
     }
     latestRenderActive = true
     latestRender = new Promise((resolve) => {
@@ -102,6 +108,7 @@ const init = Promise.all([
       }, rerenderThrottle)
     })
     await latestRender
+    registeredCbs.delete(cb)
     return forceRerenderData(cb)
   }
 
@@ -226,9 +233,7 @@ const init = Promise.all([
         appendSubmission(newSub)
       }
       socket.emit("commit", writeToken, commitAuthToken)
-      rerenderData(() => {
-        notifyI()
-      })
+      rerenderData(notifyIAll)
     })
     socket.on("requestEraseEpoch", () => {
       socket.emit("sendEraseEpoch", state.eraseEpoch)
@@ -270,9 +275,7 @@ const init = Promise.all([
       const rerender = newState.scoreRows !== undefined && newState.scoreRows !== state.scoreRows
       writeState(newState)
       if (rerender) {
-        rerenderData(() => {
-          notifyI()
-        })
+        rerenderData(notifyIAll)
       }
     })
     socket.on("writeNotifications", (adminAuthToken, newNotifications) => {
@@ -286,9 +289,7 @@ const init = Promise.all([
       writeNotifications(newNotifications)
       notifyN()
       if (state.scoreRows) {
-        rerenderData(() => {
-          notifyI()
-        })
+        rerenderData(notifyIAll)
       }
     })
     socket.on("eraseSubmissions", (adminAuthToken) => {
@@ -297,9 +298,7 @@ const init = Promise.all([
         return
       }
       eraseSubmissions()
-      rerenderData(() => {
-        notifyI()
-      })
+      rerenderData(notifyIAll)
       notifyE()
     })
   });
@@ -311,6 +310,8 @@ const init = Promise.all([
     }
     return [authToken === match.authToken, true]
   }
+
+  const notifyIAll = () => notifyI()
 
   const notifyI = (except) => {
     for (const socket of sockets) {
