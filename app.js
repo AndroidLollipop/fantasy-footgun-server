@@ -194,6 +194,8 @@ const init = Promise.all([
     return true
   }
 
+  const notifyIAll = () => notifyI()
+
   io.on("connection", (socket) => {
     var SESSION_GENERATING_TOKEN
     var SESSION_ADMIN_TOKEN
@@ -309,8 +311,6 @@ const init = Promise.all([
     }
     return [authToken === match.authToken, true]
   }
-
-  const notifyIAll = () => notifyI()
 
   const notifyI = (except) => {
     for (const socket of sockets) {
